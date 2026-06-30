@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Control Panel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 550px;
+        }
+        * {
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        h2 { text-align: center; color: #1a1a1a; margin-bottom: 25px; }
+        .info-box {
+            background: #e8f0fe;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            color: #1967d2;
+            border-left: 5px solid #1a73e8;
+        }
+        label { display: block; margin-top: 15px; color: #4a4a4a; }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+        button {
+            background-color: #1a73e8;
+            color: white;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+            margin-top: 15px;
+        }
+        button:hover { background-color: #1557b0; }
+        .btn-start { background-color: #34a853; }
+        .btn-start:hover { background-color: #2b8a43; }
+        .btn-stop { background-color: #ea4335; }
+        .btn-stop:hover { background-color: #c53929; }
+        .status { text-align: center; font-size: 18px; margin: 20px 0; color: #ea4335; }
+        .status.running { color: #34a853; }
+        .log-box {
+            background-color: #f8f9fa;
+            color: #212529;
+            height: 220px;
+            overflow-y: auto;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            font-family: 'Courier New', Courier, monospace; 
+            font-weight: normal; 
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Telegram Forwarder Panel</h2>
+    
+    <div class="info-box">
+        Source Channel: -1003241729218<br>
+        Target Channel: -1004424729721
+    </div>
+
+    <div id="login-section">
+        <label>Telegram Phone Number:</label>
+        <input type="text" id="phone" placeholder="+91XXXXXXXXXX">
+        <button onclick="requestLogin()">Request OTP</button>
+    </div>
+
+    <div id="otp-section" class="hidden">
+        <label>Verification Code:</label>
+        <input type="text" id="otp" placeholder="Enter OTP">
+        <button onclick="submitOtp()">Verify Code</button>
+    </div>
+
+    <div id="control-section" class="hidden">
+        <div class="status" id="script-status">Status: Stopped</div>
+        <button class="btn-start" onclick="startScript()">Start Execution</button>
+        <button class="btn-stop" onclick="stopScript()">Stop Execution</button>
+    </div>
+
+    <label style="margin-top: 25px;">Activity Log:</label>
+    <div class="log-box" id="log-box"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    
+    function logMessage(msg) {
+        const box = document.getElementById('log-box');
+        box.innerHTML += `> ${msg}<br>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    socket.on('log', (msg) => logMessage(msg));
+
+    function requestLogin() {
+        const phone = document.getElementById('phone').value;
+        if (!phone) return alert('Please enter your phone number.');
+        socket.emit('request_login', phone);
+    }
+
+    socket.on('ask_otp', () => {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('otp-section').classList.remove('hidden');
+    });
+
+    function submitOtp() {
+        const phone = document.getElementById('phone').value;
+        const otp = document.getElementById('otp').value;
+        socket.emit('submit_otp', { phone, otp });
+    }
+
+    socket.on('login_success', () => {
+        document.getElementById('otp-section').classList.add('hidden');
+        document.getElementById('control-section').classList.remove('hidden');
+    });
+
+    function startScript() {
+        socket.emit('start_script');
+    }
+
+    function stopScript() {
+        socket.emit('stop_script');
+    }
+
+    socket.on('status_change', (isRunning) => {
+        const statusEl = document.getElementById('script-status');
+        if (isRunning) {
+            statusEl.textContent = 'Status: Script Running';
+            statusEl.className = 'status running';
+        } else {
+            statusEl.textContent = 'Status: Stopped';
+            statusEl.className = 'status';
+        }
+    });
+</script>
+
+</body>
+</html>
